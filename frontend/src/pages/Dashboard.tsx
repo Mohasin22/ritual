@@ -6,6 +6,11 @@ import WorkoutTracker from "@/components/dashboard/WorkoutTracker";
 import JunkTracker from "@/components/dashboard/JunkTracker";
 import VitalsPanel from "@/components/dashboard/VitalsPanel";
 import WeeklyPlan from "@/components/dashboard/WeeklyPlan";
+import axios from "axios";
+
+
+
+
 
 // Mock API endpoints - ready for FastAPI + Supabase integration
 // POST /api/daily-log - Submit daily activity
@@ -14,6 +19,20 @@ import WeeklyPlan from "@/components/dashboard/WeeklyPlan";
 const Dashboard = () => {
   const [stepCount, setStepCount] = useState(8500);
   const stepGoal = 10000;
+
+  const submitSteps = async () => {
+  try {
+    const res = await axios.post("http://127.0.0.1:8000/activity/steps", null, {
+      params: {
+        steps: stepCount,
+      },
+    });
+
+    console.log("Backend response:", res.data);
+  } catch (err) {
+    console.error("Error sending steps", err);
+  }
+  };
 
   const [exercises, setExercises] = useState([
     { id: "1", name: "Push Ups (3 sets x 15)", completed: true },
@@ -77,6 +96,12 @@ const Dashboard = () => {
             stepGoal={stepGoal}
             onStepCountChange={setStepCount}
           />
+          <button
+            onClick={submitSteps}
+            className="px-4 py-2 bg-green-500 text-white rounded-lg"
+          >
+            Save Steps (Test)
+          </button>
           <WorkoutTracker
             exercises={exercises}
             onToggleExercise={handleToggleExercise}
