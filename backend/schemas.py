@@ -1,8 +1,10 @@
 from pydantic import BaseModel, EmailStr
 from datetime import date
 from typing import Optional
-from uuid import UUID
 
+# -------------------------
+# AUTH SCHEMAS
+# -------------------------
 class RegisterRequest(BaseModel):
     email: EmailStr
     username: str
@@ -13,22 +15,32 @@ class LoginRequest(BaseModel):
     email: EmailStr
     password: str
 
+# -------------------------
+# JUNK LIMIT SCHEMAS
+# -------------------------
 class JunkLimitCreate(BaseModel):
     junk_type: str
     max_quantity: int
 
+# -------------------------
+# DAILY ACTIVITY SCHEMAS
+# -------------------------
 class ActivityCreate(BaseModel):
     activity_date: date
     steps: int
     junk_type: Optional[str] = None
     junk_quantity: int = 0
 
+# -------------------------
+# RESPONSE SCHEMAS
+# -------------------------
 class ProfileResponse(BaseModel):
-    user_id: UUID
+    user_id: str
     username: str
     total_points: int
     current_streak: int
     longest_streak: int
+
 
 class ActivityResponse(BaseModel):
     activity_date: date
@@ -36,5 +48,3 @@ class ActivityResponse(BaseModel):
     junk_type: Optional[str]
     junk_quantity: int
     points: int
-
-    

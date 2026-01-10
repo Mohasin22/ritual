@@ -1,13 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+
 from database import SessionLocal
-from schemas import RegisterRequest, LoginRequest
 from models import User
+from schemas import RegisterRequest, LoginRequest
 from utils.security import hash_password, verify_password
-from crud.users import create_user
 
-router = APIRouter(prefix="/auth")
+router = APIRouter(prefix="/auth", tags=["Auth"])
 
+# -------------------------
+# DATABASE DEPENDENCY
+# -------------------------
 def get_db():
     db = SessionLocal()
     try:
@@ -15,23 +18,49 @@ def get_db():
     finally:
         db.close()
 
+# -------------------------
+# REGISTER
+# -------------------------
 @router.post("/register")
 def register(data: RegisterRequest, db: Session = Depends(get_db)):
-    if db.query(User).filter_by(email=data.email).first():
-        raise HTTPException(400, "Email already exists")
+    # Check if email already exists
+    existing_user = db.query(User).filter(User.email == data.email).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=400,
+            detail="Email already exists"
+        )
 
-    user = create_user(
-        db,
-        data.email,
-        data.username,
-        hash_password(data.password)
+    # Create user
+    user = User(
+        email=data.email,
+        username=data.username,
+        password_hash=hash_password(data.password)
     )
-    return {"user_id": user.id}
 
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    return {
+        "user_id": user.id,
+        "username": user.username
+    }
+
+# -------------------------
+# LOGIN
+# -------------------------
 @router.post("/login")
 def login(data: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter_by(email=data.email).first()
-    if not user or not verify_password(data.password, user.password_hash):
-        raise HTTPException(401, "Invalid credentials")
+    user = db.query(User).filter(User.email == data.email).first()
 
-    return {"user_id": user.id, "username": user.username}
+    if not user or not verify_password(data.password, user.password_hash):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid credentials"
+        )
+
+    return {
+        "user_id": user.id,
+        "username": user.username
+    }
