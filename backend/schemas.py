@@ -1,7 +1,7 @@
 from pydantic import BaseModel, field_validator
 from datetime import date, datetime
 from typing import Optional
-
+from typing import Dict, List
 # -------------------------
 # AUTH SCHEMAS
 # -------------------------
@@ -98,3 +98,15 @@ class ActivityResponse(BaseModel):
     junk_type: Optional[str]
     junk_quantity: int
     points: int
+
+
+
+class WorkoutDaySchema(BaseModel):
+    name: str
+    exercises: List[str]
+
+class WorkoutPlanUpdate(BaseModel):
+    workout_plan: Dict[str, WorkoutDaySchema]
+
+class WorkoutPlanResponse(BaseModel):
+    workout_plan: Dict[str, WorkoutDaySchema]

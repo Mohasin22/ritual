@@ -1,11 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from uuid import UUID
-from database import SessionLocal
-from schemas import ActivityCreate
-from crud.activity import log_daily_activity
+from datetime import date
 
-router = APIRouter(prefix="/activity")
+from database import SessionLocal
+from models import DailyActivity
+
+router = APIRouter(prefix="/activity", tags=["Activity"])
+
+# TEMP user_id (REMOVE LATER)
+TEMP_USER_ID = "temp-user-001"
 
 def get_db():
     db = SessionLocal()
@@ -14,11 +17,23 @@ def get_db():
     finally:
         db.close()
 
-@router.post("/log")
-def log_activity(user_id: UUID, data: ActivityCreate, db: Session = Depends(get_db)):
-    try:
-        activity = log_daily_activity(db, user_id, data)
-    except ValueError as e:
-        raise HTTPException(400, str(e))
+@router.post("/steps")
+def submit_steps(
+    steps: int,
+    db: Session = Depends(get_db)
+):
+    activity = DailyActivity(
+        user_id=TEMP_USER_ID,
+        activity_date=date.today(),
+        steps=steps
+    )
 
-    return {"points": activity.points}
+    db.add(activity)
+    db.commit()
+    db.refresh(activity)
+
+    return {
+        "message": "Steps saved",
+        "steps": activity.steps,
+        "date": activity.activity_date
+    }

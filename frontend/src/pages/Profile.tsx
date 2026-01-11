@@ -3,21 +3,130 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, AlertCircle, LogOut, Mail, Calendar, Trophy } from "lucide-react";
+import {
+  Loader2,
+  AlertCircle,
+  LogOut,
+  Mail,
+  Calendar,
+  Trophy,
+} from "lucide-react";
+
+const daysOfWeek = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+] as const;
+
+type Day = (typeof daysOfWeek)[number];
+
+type WorkoutDay = {
+  name: string;
+  exercises: string[];
+};
 
 export default function Profile() {
-  const { user, accessToken, logout, updateProfile, isAuthenticated } = useAuth();
+  const { user, logout, isAuthenticated, accessToken } = useAuth();
   const navigate = useNavigate();
-  const [bio, setBio] = useState(user?.bio || "");
-  const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || "");
-  const [isEditing, setIsEditing] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+
+  const [selectedDay, setSelectedDay] = useState<Day>("monday");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  const [workoutPlan, setWorkoutPlan] = useState<Record<Day, WorkoutDay>>({
+    monday: { name: "Chest", exercises: ["Bench Press", "Push Ups"] },
+    tuesday: { name: "Legs", exercises: ["Squats"] },
+    wednesday: { name: "Back", exercises: [] },
+    thursday: { name: "Shoulders", exercises: [] },
+    friday: { name: "Arms", exercises: [] },
+    saturday: { name: "", exercises: [] },
+    sunday: { name: "", exercises: [] },
+  });
+
+    const handleSaveWorkoutPlan = async () => {
+  setError("");
+  setSuccess("");
+
+  try {
+    const response = await fetch(
+      "http://localhost:8000/user/workout-plan",
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          workout_plan: workoutPlan,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to save workout plan");
+    }
+
+    setSuccess("Workout plan saved successfully!");
+
+    setTimeout(() => setSuccess(""), 3000);
+  } catch (err) {
+    setError(
+      err instanceof Error
+        ? err.message
+        : "Failed to save workout plan"
+    );
+  }
+};
+
+
+useEffect(() => {
+  const fetchWorkoutPlan = async () => {
+    if (!accessToken) return;
+
+    try {
+      const response = await fetch(
+        "http://localhost:8000/user/workout-plan",
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch workout plan");
+      }
+
+      const data = await response.json();
+
+      if (data.workout_plan && Object.keys(data.workout_plan).length > 0) {
+        setWorkoutPlan((prev) => ({
+          ...prev,
+          ...data.workout_plan,
+        }));
+      }
+    } catch (err) {
+      console.error("Workout plan fetch failed", err);
+    }
+  };
+
+  fetchWorkoutPlan();
+}, [accessToken]);
+
+
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -33,69 +142,72 @@ export default function Profile() {
     );
   }
 
-  const handleSaveProfile = async () => {
-    setError("");
-    setSuccess("");
-    setIsLoading(true);
-
-    try {
-      const response = await fetch("http://localhost:8000/auth/profile", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          bio: bio || null,
-          avatar_url: avatarUrl || null,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update profile");
-      }
-
-      const updatedUser = await response.json();
-      updateProfile(updatedUser);
-      setSuccess("Profile updated successfully!");
-      setIsEditing(false);
-
-      setTimeout(() => setSuccess(""), 3000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update profile");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleLogout = () => {
     logout();
     navigate("/login");
   };
 
-  const initials = user.username
-    ?.split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase() || "U";
+  const initials =
+    user.username
+      ?.split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase() || "U";
 
   const joinDate = new Date(user.created_at || Date.now()).toLocaleDateString(
     "en-US",
-    {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    }
+    { year: "numeric", month: "long", day: "numeric" }
   );
 
+  /* -------------------- EXERCISE HANDLERS -------------------- */
+
+  const addExercise = () => {
+    setWorkoutPlan((prev) => ({
+      ...prev,
+      [selectedDay]: {
+        ...prev[selectedDay],
+        exercises: [...prev[selectedDay].exercises, ""],
+      },
+    }));
+  };
+
+  const updateExercise = (index: number, value: string) => {
+    const updated = [...workoutPlan[selectedDay].exercises];
+    updated[index] = value;
+
+    setWorkoutPlan((prev) => ({
+      ...prev,
+      [selectedDay]: {
+        ...prev[selectedDay],
+        exercises: updated,
+      },
+    }));
+  };
+
+  const removeExercise = (index: number) => {
+    setWorkoutPlan((prev) => ({
+      ...prev,
+      [selectedDay]: {
+        ...prev[selectedDay],
+        exercises: prev[selectedDay].exercises.filter(
+          (_, i) => i !== index
+        ),
+      },
+    }));
+  };
+
+  /* -------------------- UI -------------------- */
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 py-12 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 px-4 pt-24 pb-12">
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-4xl font-bold text-gray-900">My Profile</h1>
-            <p className="text-gray-600 mt-2">Manage your account and settings</p>
+            <p className="text-gray-600 mt-2">
+              Manage your workout plan
+            </p>
           </div>
           <Button
             variant="outline"
@@ -107,9 +219,8 @@ export default function Profile() {
           </Button>
         </div>
 
-        {/* Alerts */}
         {error && (
-          <Alert variant="destructive" className="mb-6 bg-red-50 border-red-200">
+          <Alert variant="destructive" className="mb-6">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>{error}</AlertDescription>
           </Alert>
@@ -117,11 +228,13 @@ export default function Profile() {
 
         {success && (
           <Alert className="mb-6 bg-green-50 border-green-200">
-            <AlertDescription className="text-green-700">{success}</AlertDescription>
+            <AlertDescription className="text-green-700">
+              {success}
+            </AlertDescription>
           </Alert>
         )}
 
-        {/* Profile Header Card */}
+        {/* Profile Card */}
         <Card className="mb-6 shadow-lg border-0">
           <CardContent className="pt-6">
             <div className="flex items-start gap-6">
@@ -136,7 +249,7 @@ export default function Profile() {
                 <h2 className="text-3xl font-bold text-gray-900 mb-1">
                   {user.username}
                 </h2>
-                <div className="flex items-center text-gray-600 mb-4">
+                <div className="flex items-center text-gray-600 mb-2">
                   <Mail className="h-4 w-4 mr-2" />
                   {user.email}
                 </div>
@@ -149,133 +262,86 @@ export default function Profile() {
           </CardContent>
         </Card>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <Card className="shadow-lg border-0">
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <Trophy className="h-8 w-8 mx-auto text-yellow-500 mb-2" />
-                <div className="text-3xl font-bold text-gray-900">
-                  {user.total_points || 0}
-                </div>
-                <p className="text-gray-600 text-sm">Total Points</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-lg border-0">
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <div className="text-3xl font-bold text-purple-600 mb-2">
-                  🔥
-                </div>
-                <div className="text-3xl font-bold text-gray-900">
-                  {user.current_streak || 0}
-                </div>
-                <p className="text-gray-600 text-sm">Current Streak</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-lg border-0">
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <div className="text-3xl font-bold text-orange-500 mb-2">
-                  ⭐
-                </div>
-                <div className="text-3xl font-bold text-gray-900">
-                  {user.longest_streak || 0}
-                </div>
-                <p className="text-gray-600 text-sm">Longest Streak</p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Edit Profile Card */}
+        {/* Workout Editor */}
         <Card className="shadow-lg border-0">
           <CardHeader>
-            <CardTitle>About You</CardTitle>
+            <CardTitle>Workout Plan</CardTitle>
             <CardDescription>
-              {isEditing
-                ? "Update your profile information"
-                : "Your bio and personal information"}
+              Select a day and manage exercises
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            {isEditing ? (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Avatar URL
-                  </label>
-                  <Input
-                    placeholder="https://example.com/avatar.jpg"
-                    value={avatarUrl}
-                    onChange={(e) => setAvatarUrl(e.target.value)}
-                    disabled={isLoading}
-                  />
-                </div>
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-700">
-                    Bio
-                  </label>
-                  <Textarea
-                    placeholder="Tell us about yourself..."
-                    value={bio}
-                    onChange={(e) => setBio(e.target.value)}
-                    disabled={isLoading}
-                    rows={4}
-                    className="resize-none"
-                  />
-                  <p className="text-xs text-gray-500">
-                    {bio.length}/500 characters
-                  </p>
-                </div>
+          <CardContent className="space-y-4">
+            {/* Day Selector */}
+            <select
+              value={selectedDay}
+              onChange={(e) => setSelectedDay(e.target.value as Day)}
+              className="w-full border rounded-md px-3 py-2 capitalize"
+            >
+              {daysOfWeek.map((day) => (
+                <option key={day} value={day}>
+                  {day}
+                </option>
+              ))}
+            </select>
 
-                <div className="flex gap-2 pt-2">
-                  <Button
-                    onClick={handleSaveProfile}
-                    disabled={isLoading}
-                    className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      "Save Changes"
-                    )}
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setIsEditing(false);
-                      setBio(user.bio || "");
-                      setAvatarUrl(user.avatar_url || "");
-                    }}
-                    variant="outline"
-                    disabled={isLoading}
-                    className="flex-1"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <div>
-                <p className="text-gray-700 whitespace-pre-wrap mb-4">
-                  {user.bio || "No bio yet. Click edit to add one!"}
+            {/* Workout Name */}
+            <Input
+              placeholder="Workout name (Chest / Legs / etc.)"
+              value={workoutPlan[selectedDay].name}
+              onChange={(e) =>
+                setWorkoutPlan((prev) => ({
+                  ...prev,
+                  [selectedDay]: {
+                    ...prev[selectedDay],
+                    name: e.target.value,
+                  },
+                }))
+              }
+              className="font-semibold"
+            />
+
+            {/* Exercises */}
+            <div className="space-y-2">
+              {workoutPlan[selectedDay].exercises.length === 0 && (
+                <p className="text-sm text-gray-500 italic">
+                  No exercises added yet
                 </p>
-                <Button
-                  onClick={() => setIsEditing(true)}
-                  className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white"
-                >
-                  Edit Profile
-                </Button>
-              </div>
-            )}
+              )}
+
+              {workoutPlan[selectedDay].exercises.map((exercise, index) => (
+                <div key={index} className="flex gap-2">
+                  <Input
+                    value={exercise}
+                    placeholder="Exercise name"
+                    onChange={(e) =>
+                      updateExercise(index, e.target.value)
+                    }
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={() => removeExercise(index)}
+                  >
+                    ✕
+                  </Button>
+                </div>
+              ))}
+            </div>
+
+            <Button
+              variant="ghost"
+              className="text-purple-600"
+              onClick={addExercise}
+            >
+              + Add Exercise
+            </Button>
+            <Button
+  onClick={handleSaveWorkoutPlan}
+  className="w-full mt-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white"
+>
+  Save Workout Plan
+</Button>
+
           </CardContent>
         </Card>
       </div>

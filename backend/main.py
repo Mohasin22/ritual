@@ -5,6 +5,8 @@ from database import Base, engine
 import models  # Import models to register them with Base
 from routes.auth import router as auth_router
 from routes.activity import router as activity_router
+from routes.user import router as user_router
+
 
 # -------------------------
 # APP INIT
@@ -41,7 +43,7 @@ Base.metadata.create_all(bind=engine)
 # -------------------------
 app.include_router(auth_router)
 app.include_router(activity_router)
-
+app.include_router(user_router)
 # -------------------------
 # HEALTH CHECK
 # -------------------------

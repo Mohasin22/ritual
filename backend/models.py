@@ -9,7 +9,8 @@ from sqlalchemy import (
     ForeignKey
 )
 from database import Base
-
+from sqlalchemy import Column, String, ForeignKey, JSON
+from database import Base
 # -------------------------
 # USERS TABLE
 # -------------------------
@@ -85,3 +86,15 @@ class Streak(Base):
     current_streak = Column(Integer, default=0)
     longest_streak = Column(Integer, default=0)
     last_active_date = Column(Date, nullable=True)
+
+
+class WorkoutPlan(Base):
+    __tablename__ = "workout_plans"
+
+    user_id = Column(
+        String,
+        ForeignKey("users.id"),
+        primary_key=True
+    )
+
+    plan = Column(JSON, nullable=False)

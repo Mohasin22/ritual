@@ -20,19 +20,26 @@ const Dashboard = () => {
   const [stepCount, setStepCount] = useState(8500);
   const stepGoal = 10000;
 
-  const submitSteps = async () => {
-  try {
-    const res = await axios.post("http://127.0.0.1:8000/activity/steps", null, {
-      params: {
-        steps: stepCount,
-      },
-    });
+    const submitSteps = async () => {
+      try {
+        const token = localStorage.getItem("access_token");
 
-    console.log("Backend response:", res.data);
-  } catch (err) {
-    console.error("Error sending steps", err);
-  }
-  };
+        const res = await axios.post(
+          "http://127.0.0.1:8000/activity/steps",
+          null,
+          {
+            params: { steps: stepCount },
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        console.log("Backend response:", res.data);
+      } catch (err) {
+        console.error("Error sending steps", err);
+      }
+    };
 
   const [exercises, setExercises] = useState([
     { id: "1", name: "Push Ups (3 sets x 15)", completed: true },
