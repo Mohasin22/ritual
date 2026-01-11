@@ -1,19 +1,69 @@
-from pydantic import BaseModel, EmailStr
-from datetime import date
+from pydantic import BaseModel, field_validator
+from datetime import date, datetime
 from typing import Optional
 
 # -------------------------
 # AUTH SCHEMAS
 # -------------------------
 class RegisterRequest(BaseModel):
-    email: EmailStr
+    email: str
     username: str
     password: str
+    
+    @field_validator('email')
+    @classmethod
+    def validate_email(cls, v):
+        if '@' not in v or '.' not in v.split('@')[1]:
+            raise ValueError('Invalid email address')
+        return v.lower()
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    email: str
     password: str
+    
+    @field_validator('email')
+    @classmethod
+    def validate_email(cls, v):
+        if '@' not in v or '.' not in v.split('@')[1]:
+            raise ValueError('Invalid email address')
+        return v.lower()
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str
+    user_id: str
+    username: str
+
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str
+
+
+# -------------------------
+# USER PROFILE SCHEMAS
+# -------------------------
+class UserProfileUpdate(BaseModel):
+    bio: Optional[str] = None
+    avatar_url: Optional[str] = None
+
+
+class UserProfileResponse(BaseModel):
+    user_id: str
+    username: str
+    email: str
+    bio: Optional[str]
+    avatar_url: Optional[str]
+    created_at: datetime
+    total_points: int
+    current_streak: int
+    longest_streak: int
+
+    class Config:
+        from_attributes = True
+
 
 # -------------------------
 # JUNK LIMIT SCHEMAS

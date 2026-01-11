@@ -1,9 +1,11 @@
 import uuid
+from datetime import datetime
 from sqlalchemy import (
     Column,
     String,
     Integer,
     Date,
+    DateTime,
     ForeignKey
 )
 from database import Base
@@ -22,6 +24,9 @@ class User(Base):
     email = Column(String, unique=True, nullable=False, index=True)
     username = Column(String, unique=True, nullable=False)
     password_hash = Column(String, nullable=False)
+    bio = Column(String, nullable=True, default="")
+    avatar_url = Column(String, nullable=True, default=None)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
 # -------------------------
 # DAILY ACTIVITY TABLE
