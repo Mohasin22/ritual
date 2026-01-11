@@ -9,10 +9,6 @@ import WeeklyPlan from "@/components/dashboard/WeeklyPlan";
 import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
 
-// Mock API endpoints - ready for FastAPI + Supabase integration
-// POST /api/daily-log - Submit daily activity
-// GET /api/today-plan - Fetch today's plan and current points
-
 interface Exercise {
   id: string;
   name: string;
@@ -26,41 +22,51 @@ interface WorkoutDay {
 
 const Dashboard = () => {
   const { accessToken } = useAuth();
+
   const [stepCount, setStepCount] = useState(8500);
   const stepGoal = 10000;
-  
+
+  const [dayWorkoutName, setDayWorkoutName] = useState("Rest Day");
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [selectedJunk, setSelectedJunk] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
-    const submitSteps = async () => {
-      try {
-        const token = localStorage.getItem("access_token");
+  /* ---------------- DAY HELPERS ---------------- */
 
-        const res = await axios.post(
-          "http://127.0.0.1:8000/activity/steps",
-          null,
-          {
-            params: { steps: stepCount },
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        console.log("Backend response:", res.data);
-      } catch (err) {
-        console.error("Error sending steps", err);
-      }
-    };
-
-  // Get current day of week
   const getDayOfWeek = () => {
-    const days = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+    const days = [
+      "sunday",
+      "monday",
+      "tuesday",
+      "wednesday",
+      "thursday",
+      "friday",
+      "saturday",
+    ];
     return days[new Date().getDay()];
   };
 
-  // Fetch workout plan and completion status on mount
+  /* ---------------- STEPS ---------------- */
+
+  const submitSteps = async () => {
+    try {
+      await axios.post(
+        "http://127.0.0.1:8000/activity/steps",
+        null,
+        {
+          params: { steps: stepCount },
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+    } catch (err) {
+      console.error("Error sending steps", err);
+    }
+  };
+
+  /* ---------------- FETCH WORKOUT DATA ---------------- */
+
   useEffect(() => {
     const fetchWorkoutData = async () => {
       if (!accessToken) {
@@ -71,8 +77,9 @@ const Dashboard = () => {
       try {
         setLoading(true);
 
-        // Fetch workout plan
-        const planResponse = await fetch(
+        const currentDay = getDayOfWeek();
+
+        const planRes = await fetch(
           "http://localhost:8000/user/workout-plan",
           {
             headers: {
@@ -81,14 +88,11 @@ const Dashboard = () => {
           }
         );
 
-        if (!planResponse.ok) {
-          throw new Error("Failed to fetch workout plan");
-        }
+        if (!planRes.ok) throw new Error("Workout plan fetch failed");
 
-        const planData = await planResponse.json();
+        const planData = await planRes.json();
 
-        // Fetch completion status
-        const completionResponse = await fetch(
+        const completionRes = await fetch(
           "http://localhost:8000/user/workout-completion",
           {
             headers: {
@@ -97,48 +101,41 @@ const Dashboard = () => {
           }
         );
 
-        if (!completionResponse.ok) {
-          throw new Error("Failed to fetch workout completion");
-        }
+        if (!completionRes.ok)
+          throw new Error("Workout completion fetch failed");
 
-        const completionData = await completionResponse.json();
+        const completionData = await completionRes.json();
 
-        // Get today's workout from the plan
-        const currentDay = getDayOfWeek();
-        const todaysPlan = planData.workout_plan[currentDay] as WorkoutDay | undefined;
+        const todaysPlan: WorkoutDay | undefined =
+          planData.workout_plan?.[currentDay];
 
-        if (todaysPlan && todaysPlan.exercises.length > 0) {
-          // Create exercises array from the plan
-          const newExercises = todaysPlan.exercises.map((name: string, index: number) => {
-            const exerciseId = `${currentDay}-${index}`;
-            return {
-              id: exerciseId,
-              name: name,
-              completed: completionData.completed_exercises[exerciseId] || false,
-            };
-          });
+        if (todaysPlan) {
+          setDayWorkoutName(
+            todaysPlan.name?.trim() ? todaysPlan.name : "Rest Day"
+          );
 
-          setExercises(newExercises);
+          const mappedExercises: Exercise[] = todaysPlan.exercises.map(
+            (name, index) => {
+              const id = `${currentDay}-${index}`;
+              return {
+                id,
+                name,
+                completed:
+                  completionData.completed_exercises?.[id] ?? false,
+              };
+            }
+          );
+
+          setExercises(mappedExercises);
         } else {
-          // Default exercises if no plan
-          setExercises([
-            { id: "1", name: "Push Ups (3 sets x 15)", completed: false },
-            { id: "2", name: "Bench Press (4 sets x 12)", completed: false },
-            { id: "3", name: "Chest Flyes (3 sets x 12)", completed: false },
-            { id: "4", name: "Plank (3 x 1 min)", completed: false },
-          ]);
+          setDayWorkoutName("Rest Day");
+          setExercises([]);
         }
-
-        setLoading(false);
       } catch (err) {
-        console.error("Error fetching workout data", err);
-        // Fallback to default exercises
-        setExercises([
-          { id: "1", name: "Push Ups (3 sets x 15)", completed: false },
-          { id: "2", name: "Bench Press (4 sets x 12)", completed: false },
-          { id: "3", name: "Chest Flyes (3 sets x 12)", completed: false },
-          { id: "4", name: "Plank (3 x 1 min)", completed: false },
-        ]);
+        console.error("Error loading workout", err);
+        setDayWorkoutName("Rest Day");
+        setExercises([]);
+      } finally {
         setLoading(false);
       }
     };
@@ -146,14 +143,44 @@ const Dashboard = () => {
     fetchWorkoutData();
   }, [accessToken]);
 
-  const handleToggleExercise = (id: string) => {
-    setExercises((prev) =>
-      prev.map((e) => (e.id === id ? { ...e, completed: !e.completed } : e))
-    );
+  /* ---------------- SAVE COMPLETION ---------------- */
 
-    // Save completion status to backend
-    saveWorkoutCompletion();
+  const saveWorkoutCompletion = async (updated: Exercise[]) => {
+    if (!accessToken) return;
+
+    try {
+      const payload = updated.reduce<Record<string, boolean>>(
+        (acc, ex) => {
+          acc[ex.id] = ex.completed;
+          return acc;
+        },
+        {}
+      );
+
+      await fetch("http://localhost:8000/user/workout-completion", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ completed_exercises: payload }),
+      });
+    } catch (err) {
+      console.error("Failed to save completion", err);
+    }
   };
+
+  const handleToggleExercise = (id: string) => {
+    setExercises((prev) => {
+      const updated = prev.map((e) =>
+        e.id === id ? { ...e, completed: !e.completed } : e
+      );
+      saveWorkoutCompletion(updated);
+      return updated;
+    });
+  };
+
+  /* ---------------- JUNK ---------------- */
 
   const handleAddJunk = (id: string) => {
     setSelectedJunk((prev) => [...prev, id]);
@@ -163,31 +190,8 @@ const Dashboard = () => {
     setSelectedJunk((prev) => prev.filter((j) => j !== id));
   };
 
-  const saveWorkoutCompletion = async () => {
-    if (!accessToken) return;
+  /* ---------------- POINTS ---------------- */
 
-    try {
-      const completionData = exercises.reduce((acc, exercise) => {
-        acc[exercise.id] = exercise.completed;
-        return acc;
-      }, {} as Record<string, boolean>);
-
-      await fetch("http://localhost:8000/user/workout-completion", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
-          completed_exercises: completionData,
-        }),
-      });
-    } catch (err) {
-      console.error("Error saving workout completion", err);
-    }
-  };
-
-  // Calculate points
   const stepPoints = Math.floor(stepCount / 1000) * 10;
   const workoutPoints = exercises.filter((e) => e.completed).length * 20;
   const pointsGained = stepPoints + workoutPoints;
@@ -200,6 +204,7 @@ const Dashboard = () => {
     candy: 20,
     icecream: 25,
   };
+
   const pointsDeducted = selectedJunk.reduce(
     (sum, id) => sum + (junkPenalties[id] || 0),
     0
@@ -207,19 +212,30 @@ const Dashboard = () => {
 
   const totalPoints = Math.max(pointsGained - pointsDeducted, 0);
 
-  // Calculate vitals
   const stepProgress = Math.round((stepCount / stepGoal) * 100);
-  const workoutProgress = exercises.length > 0 ? Math.round(
-    (exercises.filter((e) => e.completed).length / exercises.length) * 100
-  ) : 0;
+  const workoutProgress =
+    exercises.length > 0
+      ? Math.round(
+          (exercises.filter((e) => e.completed).length /
+            exercises.length) *
+            100
+        )
+      : 0;
+
   const junkImpact: "low" | "medium" | "high" =
-    pointsDeducted === 0 ? "low" : pointsDeducted < 50 ? "medium" : "high";
+    pointsDeducted === 0
+      ? "low"
+      : pointsDeducted < 50
+      ? "medium"
+      : "high";
 
   if (loading) {
     return (
       <PageWrapper>
         <div className="flex items-center justify-center min-h-[400px]">
-          <p className="text-lg text-gray-500">Loading your workout...</p>
+          <p className="text-lg text-gray-500">
+            Loading your workout...
+          </p>
         </div>
       </PageWrapper>
     );
@@ -228,25 +244,30 @@ const Dashboard = () => {
   return (
     <PageWrapper>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Main Inputs */}
         <div className="lg:col-span-2 space-y-6">
           <WeeklyPlan />
+
           <StepsTracker
             stepCount={stepCount}
             stepGoal={stepGoal}
             onStepCountChange={setStepCount}
           />
+
           <button
             onClick={submitSteps}
             className="px-4 py-2 bg-green-500 text-white rounded-lg"
           >
-            Save Steps (Test)
+            Save Steps
           </button>
+
           <WorkoutTracker
             exercises={exercises}
             onToggleExercise={handleToggleExercise}
-            dayName={getDayOfWeek().charAt(0).toUpperCase() + getDayOfWeek().slice(1)}
+            dayName={`${getDayOfWeek()[0].toUpperCase()}${getDayOfWeek().slice(
+              1
+            )} – ${dayWorkoutName}`}
           />
+
           <JunkTracker
             selectedJunk={selectedJunk}
             onAddJunk={handleAddJunk}
@@ -254,13 +275,13 @@ const Dashboard = () => {
           />
         </div>
 
-        {/* Right Column - Summary */}
         <div className="space-y-6">
           <PointsSummary
             totalPoints={totalPoints}
             pointsGained={pointsGained}
             pointsDeducted={pointsDeducted}
           />
+
           <VitalsPanel
             stepProgress={stepProgress}
             workoutProgress={workoutProgress}
