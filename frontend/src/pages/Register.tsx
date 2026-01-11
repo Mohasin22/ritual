@@ -73,34 +73,39 @@ export default function Register() {
   const allRequirementsMet = passwordRequirements.every((req) => req.met);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <div className="w-full max-w-md">
         {/* Logo/Title */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">Ritual</h1>
-          <p className="text-purple-200">Start your transformation journey</p>
+        <div className="text-center mb-12">
+          <div className="mb-4 flex justify-center">
+            <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
+              <span className="text-white text-2xl font-bold">R</span>
+            </div>
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Ritual</h1>
+          <p className="text-gray-500">Start your transformation journey</p>
         </div>
 
-        <Card className="bg-white/95 backdrop-blur border-0 shadow-2xl">
-          <CardHeader className="space-y-2">
-            <CardTitle className="text-2xl font-bold">Create Account</CardTitle>
-            <CardDescription>
+        <Card className="bg-white border border-gray-200 shadow-lg rounded-xl">
+          <CardHeader className="space-y-2 pb-6">
+            <CardTitle className="text-2xl font-semibold text-gray-900">Create Account</CardTitle>
+            <CardDescription className="text-gray-600">
               Join our community and start building healthy habits
             </CardDescription>
           </CardHeader>
 
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-5">
               {error && (
-                <Alert variant="destructive" className="bg-red-50 border-red-200">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
+                <Alert variant="destructive" className="bg-red-50 border border-red-200 rounded-lg">
+                  <AlertCircle className="h-4 w-4 text-red-600" />
+                  <AlertDescription className="text-red-800 ml-2">{error}</AlertDescription>
                 </Alert>
               )}
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
-                  Email
+                <label className="text-sm font-semibold text-gray-700">
+                  Email Address
                 </label>
                 <Input
                   type="email"
@@ -108,13 +113,13 @@ export default function Register() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={isLoading}
-                  className="h-10"
+                  className="h-11 bg-white border border-gray-300 rounded-lg px-4 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
                   required
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
+                <label className="text-sm font-semibold text-gray-700">
                   Username
                 </label>
                 <Input
@@ -123,13 +128,13 @@ export default function Register() {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   disabled={isLoading}
-                  className="h-10"
+                  className="h-11 bg-white border border-gray-300 rounded-lg px-4 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
                   required
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
+                <label className="text-sm font-semibold text-gray-700">
                   Password
                 </label>
                 <Input
@@ -138,13 +143,13 @@ export default function Register() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={isLoading}
-                  className="h-10"
+                  className="h-11 bg-white border border-gray-300 rounded-lg px-4 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
                   required
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
+                <label className="text-sm font-semibold text-gray-700">
                   Confirm Password
                 </label>
                 <Input
@@ -153,21 +158,22 @@ export default function Register() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   disabled={isLoading}
-                  className="h-10"
+                  className="h-11 bg-white border border-gray-300 rounded-lg px-4 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
                   required
                 />
               </div>
 
               {/* Requirements Checklist */}
-              <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+              <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 space-y-3">
+                <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Requirements:</p>
                 {passwordRequirements.map((req, idx) => (
-                  <div key={idx} className="flex items-center gap-2 text-sm">
+                  <div key={idx} className="flex items-center gap-3 text-sm">
                     {req.met ? (
-                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0" />
                     ) : (
-                      <div className="h-4 w-4 rounded-full border-2 border-gray-300" />
+                      <div className="h-5 w-5 rounded-full border-2 border-gray-300 flex-shrink-0" />
                     )}
-                    <span className={req.met ? "text-green-700" : "text-gray-600"}>
+                    <span className={req.met ? "text-green-700 font-medium" : "text-gray-600"}>
                       {req.label}
                     </span>
                   </div>
@@ -177,7 +183,7 @@ export default function Register() {
               <Button
                 type="submit"
                 disabled={isLoading || !allRequirementsMet}
-                className="w-full h-10 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold disabled:opacity-50"
+                className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition disabled:opacity-60"
               >
                 {isLoading ? (
                   <>
@@ -189,12 +195,12 @@ export default function Register() {
                 )}
               </Button>
 
-              <div className="relative">
+              <div className="relative my-6">
                 <div className="absolute inset-0 flex items-center">
                   <span className="w-full border-t border-gray-300"></span>
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">
+                  <span className="px-2 bg-white text-gray-600 font-medium">
                     Already have an account?
                   </span>
                 </div>
@@ -204,7 +210,7 @@ export default function Register() {
                 <Button
                   type="button"
                   variant="outline"
-                  className="w-full h-10"
+                  className="w-full h-11 border-2 border-blue-600 text-blue-600 hover:bg-blue-50 font-semibold rounded-lg transition"
                 >
                   Sign In
                 </Button>
@@ -213,8 +219,8 @@ export default function Register() {
           </CardContent>
         </Card>
 
-        <p className="text-center text-purple-200 text-sm mt-6">
-          By creating an account, you agree to our Terms of Service
+        <p className="text-center text-gray-500 text-xs mt-8">
+          By creating an account, you agree to our <span className="text-blue-600 cursor-pointer hover:underline">Terms of Service</span> and <span className="text-blue-600 cursor-pointer hover:underline">Privacy Policy</span>
         </p>
       </div>
     </div>
