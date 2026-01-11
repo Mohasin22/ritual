@@ -110,3 +110,9 @@ class WorkoutPlanUpdate(BaseModel):
 
 class WorkoutPlanResponse(BaseModel):
     workout_plan: Dict[str, WorkoutDaySchema]
+
+class WorkoutCompletionUpdate(BaseModel):
+    completed_exercises: Dict[str, bool]
+
+class WorkoutCompletionResponse(BaseModel):
+    completed_exercises: Dict[str, bool]
