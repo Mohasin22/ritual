@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Activity, LayoutDashboard, Trophy, Calendar, BookOpen, User, LogOut } from "lucide-react";
+import { Activity, LayoutDashboard, Trophy, Calendar, BookOpen, UtensilsCrossed, User, LogOut } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,6 +17,7 @@ const navItems = [
   { path: "/leaderboard", label: "Leaderboard", icon: Trophy },
   { path: "/streaks", label: "Streaks", icon: Calendar },
   { path: "/rules", label: "Rules", icon: BookOpen },
+  { path: "/junk", label: "Junk Tracker", icon: UtensilsCrossed },
 ];
 
 const Navigation = () => {

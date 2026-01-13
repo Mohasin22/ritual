@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import Leaderboard from "./pages/Leaderboard";
 import Streaks from "./pages/Streaks";
 import Rules from "./pages/Rules";
+import JunkIntake from "./pages/JunkIntake";
 import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -61,6 +62,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Rules />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/junk"
+                element={
+                  <ProtectedRoute>
+                    <JunkIntake />
                   </ProtectedRoute>
                 }
               />

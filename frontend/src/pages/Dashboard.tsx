@@ -210,7 +210,15 @@ const Dashboard = () => {
 
   /* ---------------- POINTS ---------------- */
   // Point calculation logic
-  const stepPoints = Math.floor(savedStepCount / 1000) * 10;
+  // Steps points: 0 points below 6k, 30 points at 6k, +5 for each 1k steps up to 10k (max 50)
+  const stepPoints = (() => {
+    if (savedStepCount < 6000) return 0;
+    let points = 30;
+    const additionalSteps = Math.min(savedStepCount, 10000) - 6000;
+    points += Math.floor(additionalSteps / 1000) * 5;
+    return Math.min(points, 50);
+  })();
+  
   const workoutPoints = exercises.filter((e) => e.completed).length * 20;
   const junkPenalties: Record<string, number> = {
     burger: 30,
