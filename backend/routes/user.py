@@ -4,7 +4,8 @@ from sqlalchemy import func
 from datetime import date
 from models.workout import WorkoutPlan, WorkoutCompletion
 from models.user import User 
-from schemas import WorkoutPlanUpdate, WorkoutPlanResponse, WorkoutCompletionUpdate, WorkoutCompletionResponse
+from models.streak import Streak
+from schemas import WorkoutPlanUpdate, WorkoutPlanResponse, WorkoutCompletionUpdate, WorkoutCompletionResponse, LeaderboardResponse
 from routes.auth import get_current_user
 from database import SessionLocal
 
@@ -141,3 +142,29 @@ def get_points_summary(
         "total_points": total,
         "today_points": 0  # extend later
     }
+
+@router.get("/leaderboard", response_model=LeaderboardResponse)
+def get_leaderboard(
+    db: Session = Depends(get_db)
+):
+    # Join User, Streak, and sum points from WorkoutCompletion
+    users = db.query(User).all()
+    streaks = {s.user_id: s for s in db.query(Streak).all()}
+    points = dict(
+        db.query(WorkoutCompletion.user_id, func.sum(WorkoutCompletion.points_awarded))
+        .group_by(WorkoutCompletion.user_id)
+        .all()
+    )
+    leaderboard = []
+    for user in users:
+        user_points = points.get(user.id, 0)
+        user_streak = streaks.get(user.id)
+        leaderboard.append({
+            "user_id": user.id,
+            "username": user.username,
+            "avatar_url": user.avatar_url,
+            "points": user_points,
+            "highest_streak": user_streak.longest_streak if user_streak else 0
+        })
+    leaderboard.sort(key=lambda x: x["points"], reverse=True)
+    return {"leaderboard": leaderboard}

@@ -116,3 +116,13 @@ class WorkoutCompletionUpdate(BaseModel):
 
 class WorkoutCompletionResponse(BaseModel):
     completed_exercises: Dict[str, bool]
+
+class LeaderboardUser(BaseModel):
+    user_id: str
+    username: str
+    avatar_url: Optional[str]
+    points: int
+    highest_streak: int
+
+class LeaderboardResponse(BaseModel):
+    leaderboard: list[LeaderboardUser]
