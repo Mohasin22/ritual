@@ -1,14 +1,12 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from datetime import date
-
 from database import SessionLocal
 from models.activity import DailyActivity
+from routes.auth import get_current_user
+from models.user import User
 
 router = APIRouter(prefix="/activity", tags=["Activity"])
-
-# TEMP user_id (REMOVE LATER)
-TEMP_USER_ID = "temp-user-001"
 
 def get_db():
     db = SessionLocal()
@@ -20,18 +18,23 @@ def get_db():
 @router.post("/steps")
 def submit_steps(
     steps: int,
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    activity = DailyActivity(
-        user_id=TEMP_USER_ID,
-        activity_date=date.today(),
-        steps=steps
-    )
-
-    db.add(activity)
+    # Check if activity for today exists, update if so
+    today = date.today()
+    activity = db.query(DailyActivity).filter_by(user_id=user.id, activity_date=today).first()
+    if activity:
+        activity.steps = steps
+    else:
+        activity = DailyActivity(
+            user_id=user.id,
+            activity_date=today,
+            steps=steps
+        )
+        db.add(activity)
     db.commit()
     db.refresh(activity)
-
     return {
         "message": "Steps saved",
         "steps": activity.steps,

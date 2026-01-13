@@ -99,33 +99,30 @@ def save_workout_completion(
     db: Session = Depends(get_db)
 ):
     today = date.today()
-
     completed = data.get("completed_exercises", {})
-
-    # ---- POINTS LOGIC (BACKEND ONLY) ----
-    workout_points = sum(1 for v in completed.values() if v) * 20
-
+    points = data.get("points", 0)
+    # Always set day_of_week
+    day_of_week = today.strftime("%A").lower()  # e.g. 'monday'
     record = db.query(WorkoutCompletion).filter_by(
         user_id=user.id,
         completion_date=today
     ).first()
-
     if record:
         record.completed_exercises = completed
-        record.points_awarded = workout_points
+        record.points_awarded = points
+        record.day_of_week = day_of_week
     else:
         record = WorkoutCompletion(
             user_id=user.id,
             completion_date=today,
+            day_of_week=day_of_week,
             completed_exercises=completed,
-            points_awarded=workout_points
+            points_awarded=points
         )
         db.add(record)
-
     db.commit()
-
     return {
-        "points_awarded": workout_points
+        "points_awarded": points
     }
 
 
@@ -147,7 +144,6 @@ def get_points_summary(
 def get_leaderboard(
     db: Session = Depends(get_db)
 ):
-    # Join User, Streak, and sum points from WorkoutCompletion
     users = db.query(User).all()
     streaks = {s.user_id: s for s in db.query(Streak).all()}
     points = dict(
@@ -168,3 +164,93 @@ def get_leaderboard(
         })
     leaderboard.sort(key=lambda x: x["points"], reverse=True)
     return {"leaderboard": leaderboard}
+
+@router.get("/streak-calendar")
+def get_streak_calendar(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Fetch all completions for this user, ordered by date
+    completions = db.query(WorkoutCompletion).filter_by(user_id=user.id).order_by(WorkoutCompletion.completion_date).all()
+    calendar = []
+    current_streak = 0
+    longest_streak = 0
+    temp_streak = 0
+    total_active_days = 0
+    total_points = 0
+    last_completed = None
+    for c in completions:
+        is_active = c.points_awarded > 0
+        calendar.append({
+            "date": c.completion_date.isoformat(),
+            "points": c.points_awarded,
+            "completed": is_active
+        })
+        if is_active:
+            total_active_days += 1
+            total_points += c.points_awarded
+            if last_completed is None or (c.completion_date - last_completed).days == 1:
+                temp_streak += 1
+            else:
+                temp_streak = 1
+            longest_streak = max(longest_streak, temp_streak)
+            last_completed = c.completion_date
+        else:
+            temp_streak = 0
+    # Calculate current streak from the end
+    current_streak = 0
+    for c in reversed(completions):
+        if c.points_awarded > 0:
+            if last_completed and (last_completed - c.completion_date).days <= 1:
+                current_streak += 1
+                last_completed = c.completion_date
+            elif last_completed is None:
+                current_streak += 1
+                last_completed = c.completion_date
+            else:
+                break
+    return {
+        "calendar": calendar,
+        "currentStreak": current_streak,
+        "longestStreak": longest_streak,
+        "totalActiveDays": total_active_days,
+        "totalPoints": total_points
+    }
+
+@router.get("/dashboard-summary")
+def get_dashboard_summary(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    today = date.today()
+    # Profile (minimal)
+    profile = {
+        "user_id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "avatar_url": user.avatar_url,
+        "bio": user.bio,
+    }
+    # Workout plan
+    plan_obj = db.query(WorkoutPlan).filter(WorkoutPlan.user_id == user.id).first()
+    workout_plan = plan_obj.plan if plan_obj else {}
+    # Today's completion
+    completion = db.query(WorkoutCompletion).filter(
+        WorkoutCompletion.user_id == user.id,
+        WorkoutCompletion.completion_date == today
+    ).first()
+    completed_exercises = completion.completed_exercises if completion else {}
+    today_points = completion.points_awarded if completion else 0
+    # Points summary
+    total_points = db.query(func.sum(WorkoutCompletion.points_awarded))\
+        .filter(WorkoutCompletion.user_id == user.id)\
+        .scalar() or 0
+    return {
+        "profile": profile,
+        "workout_plan": workout_plan,
+        "completed_exercises": completed_exercises,
+        "points_summary": {
+            "total_points": total_points,
+            "today_points": today_points
+        }
+    }

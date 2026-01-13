@@ -33,13 +33,21 @@ const Leaderboard = () => {
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchLeaderboard = () => {
+    setLoading(true);
     fetch("http://localhost:8000/user/leaderboard")
       .then((res) => res.json())
       .then((data) => {
         setLeaderboard(data.leaderboard || []);
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    fetchLeaderboard();
+    const handler = () => fetchLeaderboard();
+    window.addEventListener("refresh-leaderboard", handler);
+    return () => window.removeEventListener("refresh-leaderboard", handler);
   }, []);
 
   // Top 3
