@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from models import UserJunkLimit
+from models.junk import UserJunkLimit
 
 def get_max_allowed_junk(
     db: Session,

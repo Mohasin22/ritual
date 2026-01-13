@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from datetime import date
 
 from database import SessionLocal
-from models import DailyActivity
+from models.activity import DailyActivity
 
 router = APIRouter(prefix="/activity", tags=["Activity"])
 

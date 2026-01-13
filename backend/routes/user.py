@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from datetime import date
-from models import WorkoutPlan, User, WorkoutCompletion
+from models.workout import WorkoutPlan, WorkoutCompletion
+from models.user import User 
 from schemas import WorkoutPlanUpdate, WorkoutPlanResponse, WorkoutCompletionUpdate, WorkoutCompletionResponse
 from routes.auth import get_current_user
 from database import SessionLocal
@@ -91,31 +93,51 @@ def get_workout_completion(
 # -------------------------
 @router.put("/workout-completion")
 def save_workout_completion(
-    data: WorkoutCompletionUpdate,
+    data: dict,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     today = date.today()
-    day_names = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
-    day_of_week = day_names[today.weekday()]
 
-    existing = db.query(WorkoutCompletion).filter(
-        WorkoutCompletion.user_id == user.id,
-        WorkoutCompletion.completion_date == today
+    completed = data.get("completed_exercises", {})
+
+    # ---- POINTS LOGIC (BACKEND ONLY) ----
+    workout_points = sum(1 for v in completed.values() if v) * 20
+
+    record = db.query(WorkoutCompletion).filter_by(
+        user_id=user.id,
+        completion_date=today
     ).first()
 
-    if existing:
-        existing.completed_exercises = data.completed_exercises
+    if record:
+        record.completed_exercises = completed
+        record.points_awarded = workout_points
     else:
-        db.add(
-            WorkoutCompletion(
-                user_id=user.id,
-                completion_date=today,
-                day_of_week=day_of_week,
-                completed_exercises=data.completed_exercises
-            )
+        record = WorkoutCompletion(
+            user_id=user.id,
+            completion_date=today,
+            completed_exercises=completed,
+            points_awarded=workout_points
         )
+        db.add(record)
 
     db.commit()
 
-    return {"message": "Workout completion saved successfully"}
+    return {
+        "points_awarded": workout_points
+    }
+
+
+@router.get("/points-summary")
+def get_points_summary(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    total = db.query(func.sum(WorkoutCompletion.points_awarded))\
+              .filter(WorkoutCompletion.user_id == user.id)\
+              .scalar() or 0
+
+    return {
+        "total_points": total,
+        "today_points": 0  # extend later
+    }

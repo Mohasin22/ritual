@@ -2,7 +2,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import Base, engine
-import models  # Import models to register them with Base
+from models.user import User
+from models.activity import DailyActivity
+from models.junk import UserJunkLimit
+from models.streak import Streak
+from models.workout import WorkoutPlan, WorkoutCompletion
 from routes.auth import router as auth_router
 from routes.activity import router as activity_router
 from routes.user import router as user_router

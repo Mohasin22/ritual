@@ -4,7 +4,9 @@ from sqlalchemy import func
 import logging
 
 from database import SessionLocal
-from models import User, DailyActivity, Streak
+from models.user import User
+from models.activity import DailyActivity
+from models.streak import Streak
 from schemas import (
     RegisterRequest,
     LoginRequest,

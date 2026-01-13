@@ -1,17 +1,26 @@
 import { motion } from "framer-motion";
 import { Calendar } from "lucide-react";
 
-const weeklyPlan = [
-  { day: "Mon", workout: "Chest" },
-  { day: "Tue", workout: "Legs" },
-  { day: "Wed", workout: "Back" },
-  { day: "Thu", workout: "Shoulders" },
-  { day: "Fri", workout: "Arms" },
-  { day: "Sat", workout: "Cardio" },
-  { day: "Sun", workout: "Rest" },
+export interface WorkoutDay {
+  name: string;
+  exercises: string[];
+}
+
+interface WeeklyPlanProps {
+  workoutPlan: Record<string, WorkoutDay>;
+}
+
+const daysOfWeek = [
+  { key: "monday", label: "Mon" },
+  { key: "tuesday", label: "Tue" },
+  { key: "wednesday", label: "Wed" },
+  { key: "thursday", label: "Thu" },
+  { key: "friday", label: "Fri" },
+  { key: "saturday", label: "Sat" },
+  { key: "sunday", label: "Sun" },
 ];
 
-const WeeklyPlan = () => {
+const WeeklyPlan = ({ workoutPlan }: WeeklyPlanProps) => {
   const today = new Date().getDay();
   const adjustedToday = today === 0 ? 6 : today - 1; // Adjust for Mon-Sun
 
@@ -30,34 +39,37 @@ const WeeklyPlan = () => {
       </div>
 
       <div className="grid grid-cols-7 gap-2">
-        {weeklyPlan.map((item, index) => (
-          <motion.div
-            key={item.day}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05 * index }}
-            className={`flex flex-col items-center p-3 rounded-xl text-center transition-all ${
-              index === adjustedToday
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted/50"
-            }`}
-          >
-            <span
-              className={`text-xs font-semibold mb-2 ${
-                index === adjustedToday ? "text-primary-foreground" : "text-muted-foreground"
+        {daysOfWeek.map((item, index) => {
+          const workoutDay = workoutPlan[item.key];
+          return (
+            <motion.div
+              key={item.key}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 * index }}
+              className={`flex flex-col items-center p-3 rounded-xl text-center transition-all ${
+                index === adjustedToday
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted/50"
               }`}
             >
-              {item.day}
-            </span>
-            <span 
-              className={`text-xs font-medium truncate w-full ${
-                index === adjustedToday ? "text-primary-foreground" : "text-foreground"
-              }`}
-            >
-              {item.workout}
-            </span>
-          </motion.div>
-        ))}
+              <span
+                className={`text-xs font-semibold mb-2 ${
+                  index === adjustedToday ? "text-primary-foreground" : "text-muted-foreground"
+                }`}
+              >
+                {item.label}
+              </span>
+              <span
+                className={`text-xs font-medium truncate w-full ${
+                  index === adjustedToday ? "text-primary-foreground" : "text-foreground"
+                }`}
+              >
+                {workoutDay?.name?.trim() ? workoutDay.name : "Rest Day"}
+              </span>
+            </motion.div>
+          );
+        })}
       </div>
     </motion.div>
   );

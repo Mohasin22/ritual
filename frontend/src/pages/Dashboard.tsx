@@ -30,6 +30,9 @@ const Dashboard = () => {
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [selectedJunk, setSelectedJunk] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [totalPoints, setTotalPoints] = useState(0);
+  const [workoutProgress, setWorkoutProgress] = useState(0);
+  const [workoutPlan, setWorkoutPlan] = useState<Record<string, WorkoutDay>>({});
 
   /* ---------------- DAY HELPERS ---------------- */
 
@@ -66,6 +69,32 @@ const Dashboard = () => {
   };
 
   /* ---------------- FETCH WORKOUT DATA ---------------- */
+  useEffect(() => {
+    if (!accessToken) return;
+
+    fetch("http://localhost:8000/user/points-summary", {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+      .then(res => res.json())
+      .then(data => {
+        setTotalPoints(data.total_points || 0);
+      });
+
+    // Fetch workout plan for weekly display
+    fetch("http://localhost:8000/user/workout-plan", {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.workout_plan) {
+          setWorkoutPlan(data.workout_plan);
+        }
+      });
+  }, [accessToken]);
 
   useEffect(() => {
     const fetchWorkoutData = async () => {
@@ -127,14 +156,22 @@ const Dashboard = () => {
           );
 
           setExercises(mappedExercises);
+          const completedExercises = mappedExercises.filter((e) => e.completed).length;
+          setWorkoutProgress(
+            mappedExercises.length > 0
+              ? Math.round((completedExercises / mappedExercises.length) * 100)
+              : 0
+          );
         } else {
           setDayWorkoutName("Rest Day");
           setExercises([]);
+          setWorkoutProgress(0);
         }
       } catch (err) {
         console.error("Error loading workout", err);
         setDayWorkoutName("Rest Day");
         setExercises([]);
+        setWorkoutProgress(0);
       } finally {
         setLoading(false);
       }
@@ -176,6 +213,12 @@ const Dashboard = () => {
         e.id === id ? { ...e, completed: !e.completed } : e
       );
       saveWorkoutCompletion(updated);
+      const completedExercises = updated.filter((e) => e.completed).length;
+      setWorkoutProgress(
+        updated.length > 0
+          ? Math.round((completedExercises / updated.length) * 100)
+          : 0
+      );
       return updated;
     });
   };
@@ -210,17 +253,11 @@ const Dashboard = () => {
     0
   );
 
-  const totalPoints = Math.max(pointsGained - pointsDeducted, 0);
+  useEffect(() => {
+    setTotalPoints(Math.max(pointsGained - pointsDeducted, 0));
+  }, [pointsGained, pointsDeducted]);
 
   const stepProgress = Math.round((stepCount / stepGoal) * 100);
-  const workoutProgress =
-    exercises.length > 0
-      ? Math.round(
-          (exercises.filter((e) => e.completed).length /
-            exercises.length) *
-            100
-        )
-      : 0;
 
   const junkImpact: "low" | "medium" | "high" =
     pointsDeducted === 0
@@ -245,7 +282,7 @@ const Dashboard = () => {
     <PageWrapper>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <WeeklyPlan />
+          <WeeklyPlan workoutPlan={workoutPlan} />
 
           <StepsTracker
             stepCount={stepCount}
