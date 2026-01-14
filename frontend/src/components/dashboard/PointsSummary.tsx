@@ -6,25 +6,41 @@ interface PointsSummaryProps {
   totalPoints: number;
   pointsGained: number;
   pointsDeducted: number;
+  todayPoints: number;
 }
 
-const AnimatedCounter = ({ value, duration = 1 }: { value: number; duration?: number }) => {
-  const [count, setCount] = useState(0);
+
+const AnimatedCounter = ({
+  value,
+  duration = 1,
+}: {
+  value: number;
+  duration?: number;
+}) => {
+  const [count, setCount] = useState(value);
 
   useEffect(() => {
+    // ✅ If value is 0, just set it immediately
+    if (value === 0) {
+      setCount(0);
+      return;
+    }
+
     let start = 0;
     const end = value;
-    const incrementTime = (duration * 1000) / end;
-    
+    const steps = 50;
+    const increment = Math.ceil(end / steps);
+    const interval = (duration * 1000) / steps;
+
     const timer = setInterval(() => {
-      start += Math.ceil(end / 50);
+      start += increment;
       if (start >= end) {
         setCount(end);
         clearInterval(timer);
       } else {
         setCount(start);
       }
-    }, incrementTime);
+    }, interval);
 
     return () => clearInterval(timer);
   }, [value, duration]);
@@ -32,7 +48,7 @@ const AnimatedCounter = ({ value, duration = 1 }: { value: number; duration?: nu
   return <span>{count.toLocaleString()}</span>;
 };
 
-const PointsSummary = ({ totalPoints, pointsGained, pointsDeducted }: PointsSummaryProps) => {
+const PointsSummary = ({ todayPoints, pointsGained, pointsDeducted }: PointsSummaryProps) => {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -50,9 +66,12 @@ const PointsSummary = ({ totalPoints, pointsGained, pointsDeducted }: PointsSumm
       {/* Main Points Display */}
       <div className="text-center mb-8">
         <span className="font-display text-5xl font-bold text-foreground">
-          <AnimatedCounter value={totalPoints} />
+          {/* ✅ THIS IS THE FIX */}
+          <AnimatedCounter value={todayPoints} />
         </span>
-        <p className="text-muted-foreground mt-2 text-sm">points earned today</p>
+        <p className="text-muted-foreground mt-2 text-sm">
+          points earned today
+        </p>
       </div>
 
       {/* Breakdown */}

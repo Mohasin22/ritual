@@ -141,30 +141,55 @@ def get_points_summary(
     }
 
 @router.get("/leaderboard", response_model=LeaderboardResponse)
-def get_leaderboard(
-    db: Session = Depends(get_db)
-):
+def get_leaderboard(db: Session = Depends(get_db)):
     users = db.query(User).all()
-    streaks = {s.user_id: s for s in db.query(Streak).all()}
-    points = dict(
-        db.query(WorkoutCompletion.user_id, func.sum(WorkoutCompletion.points_awarded))
+
+    points_map = dict(
+        db.query(
+            WorkoutCompletion.user_id,
+            func.sum(WorkoutCompletion.points_awarded)
+        )
         .group_by(WorkoutCompletion.user_id)
         .all()
     )
+
+    completions = db.query(WorkoutCompletion)\
+        .filter(WorkoutCompletion.points_awarded > 0)\
+        .order_by(WorkoutCompletion.user_id, WorkoutCompletion.completion_date)\
+        .all()
+
+    streaks = {}
+
+    for c in completions:
+        uid = c.user_id
+        if uid not in streaks:
+            streaks[uid] = {"current": 1, "longest": 1, "last": c.completion_date}
+        else:
+            last = streaks[uid]["last"]
+            if (c.completion_date - last).days == 1:
+                streaks[uid]["current"] += 1
+            else:
+                streaks[uid]["current"] = 1
+
+            streaks[uid]["longest"] = max(
+                streaks[uid]["longest"],
+                streaks[uid]["current"]
+            )
+            streaks[uid]["last"] = c.completion_date
+
     leaderboard = []
+
     for user in users:
-        user_points = points.get(user.id, 0)
-        user_streak = streaks.get(user.id)
         leaderboard.append({
             "user_id": user.id,
             "username": user.username,
             "avatar_url": user.avatar_url,
-            "points": user_points,
-            "highest_streak": user_streak.longest_streak if user_streak else 0
+            "points": points_map.get(user.id, 0),
+            "highest_streak": streaks.get(user.id, {}).get("longest", 0)
         })
+
     leaderboard.sort(key=lambda x: x["points"], reverse=True)
     return {"leaderboard": leaderboard}
-
 @router.get("/streak-calendar")
 def get_streak_calendar(
     user: User = Depends(get_current_user),
