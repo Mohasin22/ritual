@@ -10,7 +10,7 @@ interface PointsSummaryProps {
 }
 
 
-const AnimatedCounter = ({
+export const AnimatedCounter = ({
   value,
   duration = 1,
 }: {

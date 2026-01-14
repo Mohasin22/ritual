@@ -126,3 +126,15 @@ class LeaderboardUser(BaseModel):
 
 class LeaderboardResponse(BaseModel):
     leaderboard: list[LeaderboardUser]
+
+
+# -------------------------
+# JUNK USAGE SCHEMAS
+# -------------------------
+
+class JunkLimitResponse(BaseModel):
+    junk_type: str
+    max_quantity: int
+
+class JunkLimitListResponse(BaseModel):
+    limits: List[JunkLimitResponse]

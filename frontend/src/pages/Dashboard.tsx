@@ -8,6 +8,9 @@ import VitalsPanel from "@/components/dashboard/VitalsPanel";
 import WeeklyPlan from "@/components/dashboard/WeeklyPlan";
 import axios from "axios";
 import { useAuth } from "@/context/AuthContext";
+import { JUNK_MENU } from "@/data/junkMenu";
+import { HARM_LEVEL_RULES } from "@/data/junkHelpers";
+import { CheckCircle } from "lucide-react";
 
 /* ---------------- TYPES ---------------- */
 
@@ -33,6 +36,30 @@ const Dashboard = () => {
     const saved = localStorage.getItem("stepCount");
     return saved ? parseInt(saved, 10) : 0;
   });
+
+  interface JunkLog {
+  itemId: string;
+  quantity: number;
+  timestamp: string;
+}
+  useEffect(() => {
+  const saved = localStorage.getItem("junkLogs");
+  if (saved) {
+    setJunkLogs(JSON.parse(saved));
+  }
+}, []);
+
+interface LoggedJunk {
+  id: string;
+  itemId: string;
+  quantity: number;
+  timestamp: string;
+}
+
+const [junkLogs, setJunkLogs] = useState<LoggedJunk[]>([]);
+
+
+
 
   const [savedStepCount, setSavedStepCount] = useState(stepCount);
   const stepGoal = 10000;
@@ -71,6 +98,37 @@ const Dashboard = () => {
   points += Math.floor(additional / 1000) * 5;
   return Math.min(points, 50);
 };
+
+const calculateJunkPenalty = (logs: JunkLog[]) => {
+  const today = new Date().toISOString().split("T")[0];
+  const levelCount: Record<number, number> = {};
+
+  logs
+    .filter(l => l.timestamp.startsWith(today))
+    .forEach(log => {
+      const item = JUNK_MENU.foods.find(f => f.id === log.itemId);
+      if (!item) return;
+
+      levelCount[item.harm_level] =
+        (levelCount[item.harm_level] || 0) + log.quantity;
+    });
+
+  let penalty = 0;
+  Object.entries(levelCount).forEach(([lvl, count]) => {
+    const rule = HARM_LEVEL_RULES[Number(lvl)];
+    const extra = Math.max(0, count - rule.free);
+    penalty += extra * rule.penalty;
+  });
+
+  return penalty;
+};
+
+const today = new Date().toISOString().split("T")[0];
+
+const todaysJunk = junkLogs.filter((j) =>
+  j.timestamp.startsWith(today)
+);
+
   /* ---------------- POINT CALCULATION ---------------- */
 
   const stepPoints = (() => {
@@ -83,22 +141,12 @@ const Dashboard = () => {
 
   const workoutPoints = exercises.filter(e => e.completed).length * 20;
 
-  const junkPenalties: Record<string, number> = {
-    burger: 30,
-    pizza: 25,
-    fries: 20,
-    soda: 15,
-    candy: 20,
-    icecream: 25,
-  };
+  
 
-  const pointsDeducted = selectedJunk.reduce(
-    (sum, id) => sum + (junkPenalties[id] || 0),
-    0
-  );
+  const junkPenaltyToday = calculateJunkPenalty(junkLogs);
 
   const pointsGained = stepPoints + workoutPoints;
-  const finalPoints = Math.max(pointsGained - pointsDeducted, 0);
+  const finalPoints = Math.max(pointsGained - junkPenaltyToday, 0);
 
   /* ---------------- FETCH DASHBOARD ---------------- */
 
@@ -179,10 +227,8 @@ const Dashboard = () => {
     const stepPts = calculateStepPoints(stepCount);
     const workoutPts = exercises.filter(e => e.completed).length * 20;
 
-    const junkPts = selectedJunk.reduce(
-      (sum, id) => sum + (junkPenalties[id] || 0),
-      0
-    );
+    
+    const junkPts = junkPenaltyToday;
 
     const pointsGainedNow = stepPts + workoutPts;
     const finalPointsNow = Math.max(pointsGainedNow - junkPts, 0);
@@ -242,70 +288,108 @@ const Dashboard = () => {
   /* ---------------- RENDER ---------------- */
 
   if (loading) {
-    return (
-      <PageWrapper>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <p className="text-lg text-gray-500">Loading your workout...</p>
-        </div>
-      </PageWrapper>
-    );
-  }
-
   return (
     <PageWrapper>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <WeeklyPlan workoutPlan={workoutPlan} />
-
-          <StepsTracker
-            stepCount={stepCount}
-            stepGoal={stepGoal}
-            onStepCountChange={setStepCount}
-          />
-
-          <button
-            onClick={submitSteps}
-            className="px-4 py-2 bg-green-500 text-white rounded-lg"
-          >
-            Save Day
-          </button>
-
-          <WorkoutTracker
-            exercises={exercises}
-            onToggleExercise={handleToggleExercise}
-            dayName={`${getDayOfWeek()} – ${dayWorkoutName}`}
-          />
-
-          <JunkTracker
-            selectedJunk={selectedJunk}
-            onAddJunk={handleAddJunk}
-            onRemoveJunk={handleRemoveJunk}
-          />
-        </div>
-
-        <div className="space-y-6">
-          <PointsSummary
-            totalPoints={totalPoints}
-            pointsGained={pointsGained}
-            pointsDeducted={pointsDeducted}
-            todayPoints={todayPoints}
-          />
-          <VitalsPanel
-            stepProgress={Math.round((savedStepCount / stepGoal) * 100)}
-            workoutProgress={workoutProgress}
-            junkImpact={
-              pointsDeducted === 0
-                ? "low"
-                : pointsDeducted < 50
-                ? "medium"
-                : "high"
-            }
-            currentStreak={currentStreak}
-          />
-        </div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-lg text-gray-500">Loading your workout...</p>
       </div>
     </PageWrapper>
   );
+}
+
+return (
+  <PageWrapper>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      
+      {/* LEFT: MAIN CONTENT */}
+      <div className="lg:col-span-2 space-y-6">
+        <WeeklyPlan workoutPlan={workoutPlan} />
+
+        <StepsTracker
+          stepCount={stepCount}
+          stepGoal={stepGoal}
+          onStepCountChange={setStepCount}
+        />
+
+        <button
+          onClick={submitSteps}
+          className="px-4 py-2 bg-green-500 text-white rounded-lg"
+        >
+          Save Day
+        </button>
+
+        <WorkoutTracker
+          exercises={exercises}
+          onToggleExercise={handleToggleExercise}
+          dayName={`${getDayOfWeek()} – ${dayWorkoutName}`}
+        />
+
+        <div className="card-elevated p-4">
+  <h3 className="font-display font-semibold mb-3">
+    Today’s Junk
+  </h3>
+
+  {todaysJunk.length === 0 ? (
+    <div className="flex items-center gap-2 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+      <CheckCircle className="w-5 h-5 text-emerald-600" />
+      <p className="text-sm text-emerald-700 font-medium">
+        No junk logged today 🎉
+      </p>
+    </div>
+  ) : (
+    <div className="space-y-2">
+      {todaysJunk.map((log) => {
+        const item = JUNK_MENU.foods.find(
+          (f) => f.id === log.itemId
+        );
+        if (!item) return null;
+
+        return (
+          <div
+            key={log.id}
+            className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/40"
+          >
+            <span className="text-sm font-medium">
+              {item.name}
+            </span>
+            <span className="text-sm text-muted-foreground">
+              ×{log.quantity}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  )}
+</div>
+
+      </div>
+
+      {/* RIGHT: SIDEBAR */}
+      <div className="space-y-6">
+        <PointsSummary
+          totalPoints={totalPoints}
+          pointsGained={pointsGained}
+          pointsDeducted={junkPenaltyToday}
+          todayPoints={finalPoints}
+        />
+
+        <VitalsPanel
+          stepProgress={Math.round((savedStepCount / stepGoal) * 100)}
+          workoutProgress={workoutProgress}
+          junkImpact={
+            junkPenaltyToday === 0
+              ? "low"
+              : junkPenaltyToday < 50
+              ? "medium"
+              : "high"
+          }
+          currentStreak={currentStreak}
+        />
+      </div>
+
+    </div>
+  </PageWrapper>
+);
 };
 
 export default Dashboard;
