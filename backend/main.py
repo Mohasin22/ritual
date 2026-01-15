@@ -33,7 +33,7 @@ app.add_middleware(
 
 # -------------------------
 # DATABASE INIT (SQLite)
-# -------------------------
+# -------------------
 # This creates all tables on startup
 Base.metadata.create_all(bind=engine)
 
