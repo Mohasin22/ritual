@@ -23,7 +23,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:8080",          # local frontend
-        "https://mohasin22.github.io/ritual"  # production frontend
+        "https://mohasin22.github.io"  # production frontend
     ],
     allow_credentials=True,
     allow_methods=["*"],
