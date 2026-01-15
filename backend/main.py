@@ -11,31 +11,31 @@ from routes.auth import router as auth_router
 from routes.activity import router as activity_router
 from routes.user import router as user_router
 
-
 # -------------------------
 # APP INIT
 # -------------------------
 app = FastAPI(title="Ritual")
 
 # -------------------------
-# CORS MIDDLEWARE
+# CORS CONFIG (IMPORTANT)
 # -------------------------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "*"
+        "http://localhost:8080/",          # local frontend
+        "https://mohasin22.github.io/ritual"  # production frontend
     ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["*"],
     allow_headers=["*"],
-    max_age=3600,
 )
 
 # -------------------------
-# DATABASE INIT (SQLite)
-# -------------------
-# This creates all tables on startup
-Base.metadata.create_all(bind=engine)
+# DATABASE INIT
+# -------------------------s
+@app.on_event("startup")
+def startup():
+    Base.metadata.create_all(bind=engine)
 
 # -------------------------
 # ROUTES
@@ -43,6 +43,7 @@ Base.metadata.create_all(bind=engine)
 app.include_router(auth_router)
 app.include_router(activity_router)
 app.include_router(user_router)
+
 # -------------------------
 # HEALTH CHECK
 # -------------------------
