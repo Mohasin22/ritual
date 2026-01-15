@@ -11,6 +11,8 @@ import { useAuth } from "@/context/AuthContext";
 import { JUNK_MENU } from "@/data/junkMenu";
 import { HARM_LEVEL_RULES } from "@/data/junkHelpers";
 import { CheckCircle } from "lucide-react";
+import api from "@/api";
+
 
 /* ---------------- TYPES ---------------- */
 
@@ -151,64 +153,69 @@ const todaysJunk = junkLogs.filter((j) =>
   /* ---------------- FETCH DASHBOARD ---------------- */
 
   useEffect(() => {
-    if (!accessToken) return;
+  if (!accessToken) return;
 
-    const fetchDashboard = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch("http://localhost:8000/user/dashboard-summary", {
+  const fetchDashboard = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(
+        `https://ritual-backend-khdm.onrender.com/user/dashboard-summary`,
+        {
           headers: { Authorization: `Bearer ${accessToken}` },
-        });
-
-        const data = await res.json();
-
-        if (data.workout_plan) setWorkoutPlan(data.workout_plan);
-
-        const today = getDayOfWeek();
-        const todaysPlan = data.workout_plan?.[today];
-
-        if (todaysPlan) {
-          setDayWorkoutName(todaysPlan.name || "Rest Day");
-          const mapped = todaysPlan.exercises.map(
-            (name: string, index: number) => ({
-              id: `${today}-${index}`,
-              name,
-              completed: data.completed_exercises?.[`${today}-${index}`] ?? false,
-            })
-          );
-          setExercises(mapped);
         }
+      );
 
-        setTotalPoints(data.points_summary?.total_points || 0);
-        setTodayPoints(data.points_summary?.today_points || 0);
-        setCurrentStreak(data.current_streak || 0);
-      } catch (err) {
-        console.error("Dashboard load failed", err);
-      } finally {
-        setLoading(false);
+      const data = await res.json();
+
+      if (data.workout_plan) setWorkoutPlan(data.workout_plan);
+
+      const today = getDayOfWeek();
+      const todaysPlan = data.workout_plan?.[today];
+
+      if (todaysPlan) {
+        setDayWorkoutName(todaysPlan.name || "Rest Day");
+        const mapped = todaysPlan.exercises.map(
+          (name: string, index: number) => ({
+            id: `${today}-${index}`,
+            name,
+            completed: data.completed_exercises?.[`${today}-${index}`] ?? false,
+          })
+        );
+        setExercises(mapped);
       }
-    };
 
-    fetchDashboard();
-  }, [accessToken]);
+      setTotalPoints(data.points_summary?.total_points || 0);
+      setTodayPoints(data.points_summary?.today_points || 0);
+      setCurrentStreak(data.current_streak || 0);
+    } catch (err) {
+      console.error("Dashboard load failed", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchDashboard();
+}, [accessToken]);
 
   /* ---------------- SAVE DAY (ONLY PLACE THAT SAVES) ---------------- */
 
-  const saveWorkoutCompletion = async (
-    exercisesToSave: Exercise[],
-    pointsToSave: number
-  ) => {
-    if (!accessToken) return;
+ const saveWorkoutCompletion = async (
+  exercisesToSave: Exercise[],
+  pointsToSave: number
+) => {
+  if (!accessToken) return;
 
-    const payload = exercisesToSave.reduce<Record<string, boolean>>(
-      (acc, ex) => {
-        acc[ex.id] = ex.completed;
-        return acc;
-      },
-      {}
-    );
+  const payload = exercisesToSave.reduce<Record<string, boolean>>(
+    (acc, ex) => {
+      acc[ex.id] = ex.completed;
+      return acc;
+    },
+    {}
+  );
 
-    await fetch("http://localhost:8000/user/workout-completion", {
+  await fetch(
+    "https://ritual-backend-khdm.onrender.com/user/workout-completion",
+    {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -218,24 +225,21 @@ const todaysJunk = junkLogs.filter((j) =>
         completed_exercises: payload,
         points: pointsToSave,
       }),
-    });
-  };
+    }
+  );
+};
 
-  const submitSteps = async () => {
+const submitSteps = async () => {
   try {
-    // ✅ calculate points FIRST from current stepCount
     const stepPts = calculateStepPoints(stepCount);
-    const workoutPts = exercises.filter(e => e.completed).length * 20;
-
-    
+    const workoutPts = exercises.filter((e) => e.completed).length * 20;
     const junkPts = junkPenaltyToday;
 
     const pointsGainedNow = stepPts + workoutPts;
     const finalPointsNow = Math.max(pointsGainedNow - junkPts, 0);
 
-    // ✅ send steps
     await axios.post(
-      "http://127.0.0.1:8000/activity/steps",
+      "https://ritual-backend-khdm.onrender.com/activity/steps",
       null,
       {
         params: { steps: stepCount },
@@ -243,14 +247,11 @@ const todaysJunk = junkLogs.filter((j) =>
       }
     );
 
-    // ✅ update saved steps AFTER calculation
     setSavedStepCount(stepCount);
     localStorage.setItem("stepCount", stepCount.toString());
 
-    // ✅ save correct points
     await saveWorkoutCompletion(exercises, finalPointsNow);
 
-    // ✅ update UI immediately
     setTodayPoints(finalPointsNow);
 
     window.dispatchEvent(new Event("refresh-leaderboard"));

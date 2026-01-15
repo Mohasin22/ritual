@@ -4,6 +4,8 @@ import { Flame, Calendar, Target, TrendingUp } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useIsMobile } from "@/hooks/use-mobile";
+import api from "@/api";
+
 
 interface CalendarDay {
   date: string;
@@ -29,60 +31,60 @@ const Streaks = () => {
 
   const [yearCalendars, setYearCalendars] = useState<{ [month: number]: CalendarDay[] }>({});
 
-  useEffect(() => {
-    const fetchCalendar = async () => {
-      try {
-        const res = await fetch(
-          `http://localhost:8000/user/streak-calendar?month=${selectedMonth + 1}&year=${selectedYear}`,
-          {
-            credentials: "include",
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-            },
-          }
-        );
-        if (res.status === 401) {
-          navigate("/login");
-          return;
+useEffect(() => {
+  const fetchCalendar = async () => {
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/user/streak-calendar?month=${selectedMonth + 1}&year=${selectedYear}`,
+        {
+          credentials: "include",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          },
         }
-        const data = await res.json();
-        setCalendar(data.calendar || []);
-        setCurrentStreak(data.currentStreak || 0);
-        setLongestStreak(data.longestStreak || 0);
-        setTotalActiveDays(data.totalActiveDays || 0);
-        setTotalPoints(data.totalPoints || 0);
-      } catch (e) {
-        // Optionally show an error toast
+      );
+      if (res.status === 401) {
+        navigate("/login");
+        return;
       }
-    };
-    fetchCalendar();
-  }, [selectedMonth, selectedYear, navigate]);
+      const data = await res.json();
+      setCalendar(data.calendar || []);
+      setCurrentStreak(data.currentStreak || 0);
+      setLongestStreak(data.longestStreak || 0);
+      setTotalActiveDays(data.totalActiveDays || 0);
+      setTotalPoints(data.totalPoints || 0);
+    } catch (e) {
+      // Optionally show an error toast
+    }
+  };
+  fetchCalendar();
+}, [selectedMonth, selectedYear, navigate]);
 
-  useEffect(() => {
-    if (!isDesktop) return;
-    const fetchAllMonths = async () => {
-      const newYearCalendars: { [month: number]: CalendarDay[] } = {};
-      for (let m = 0; m < 12; m++) {
-        const res = await fetch(
-          `http://localhost:8000/user/streak-calendar?month=${m + 1}&year=${selectedYear}`,
-          {
-            credentials: "include",
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-            },
-          }
-        );
-        if (res.status === 401) {
-          navigate("/login");
-          return;
+useEffect(() => {
+  if (!isDesktop) return;
+  const fetchAllMonths = async () => {
+    const newYearCalendars: { [month: number]: CalendarDay[] } = {};
+    for (let m = 0; m < 12; m++) {
+      const res = await fetch(
+        `${import.meta.env.VITE_API_BASE_URL}/user/streak-calendar?month=${m + 1}&year=${selectedYear}`,
+        {
+          credentials: "include",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          },
         }
-        const data = await res.json();
-        newYearCalendars[m] = data.calendar || [];
+      );
+      if (res.status === 401) {
+        navigate("/login");
+        return;
       }
-      setYearCalendars(newYearCalendars);
-    };
-    fetchAllMonths();
-  }, [isDesktop, selectedYear, navigate]);
+      const data = await res.json();
+      newYearCalendars[m] = data.calendar || [];
+    }
+    setYearCalendars(newYearCalendars);
+  };
+  fetchAllMonths();
+}, [isDesktop, selectedYear, navigate]);
 
   const months = [
     "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"

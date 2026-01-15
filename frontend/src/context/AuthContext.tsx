@@ -1,4 +1,5 @@
 import React, { createContext, useState, useCallback, useEffect } from "react";
+import api from "@/api";
 
 interface User {
   user_id: string;
@@ -27,9 +28,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(
     localStorage.getItem("access_token")
@@ -39,117 +38,86 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   );
   const [isLoading, setIsLoading] = useState(false);
 
-  const API_URL = "http://127.0.0.1:8000";
-
   // Persist tokens
   useEffect(() => {
-    if (accessToken) {
-      localStorage.setItem("access_token", accessToken);
-    } else {
-      localStorage.removeItem("access_token");
-    }
+    if (accessToken) localStorage.setItem("access_token", accessToken);
+    else localStorage.removeItem("access_token");
   }, [accessToken]);
 
   useEffect(() => {
-    if (refreshToken) {
-      localStorage.setItem("refresh_token", refreshToken);
-    } else {
-      localStorage.removeItem("refresh_token");
-    }
+    if (refreshToken) localStorage.setItem("refresh_token", refreshToken);
+    else localStorage.removeItem("refresh_token");
   }, [refreshToken]);
 
-  // Fetch user profile when we have a token
+  // Fetch user profile when token exists
   useEffect(() => {
-    if (accessToken && !user) {
-      fetchProfile();
-    }
+    if (accessToken && !user) fetchProfile();
   }, [accessToken]);
 
   const fetchProfile = useCallback(async () => {
     if (!accessToken) return;
 
     try {
-      const response = await fetch(`${API_URL}/auth/profile`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
+      const res = await api.get("/auth/profile", {
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
-
-      if (response.ok) {
-        const userData = await response.json();
-        setUser(userData);
-      } else if (response.status === 401) {
-        // Try to refresh the token
+      setUser(res.data);
+    } catch (err: any) {
+      if (err?.response?.status === 401) {
         await refreshAccessToken();
+      } else {
+        console.error("Error fetching profile", err);
       }
-    } catch (error) {
-      console.error("Error fetching profile:", error);
     }
   }, [accessToken]);
 
-  const login = useCallback(
-    async (email: string, password: string) => {
-      setIsLoading(true);
-      try {
-        const response = await fetch(`${API_URL}/auth/login`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email, password }),
-        });
+  const login = useCallback(async (email: string, password: string) => {
+    setIsLoading(true);
+    try {
+      const res = await api.post("/auth/login", { email, password });
+      setAccessToken(res.data.access_token);
+      setRefreshToken(res.data.refresh_token);
+      setUser({
+        user_id: res.data.user_id,
+        username: res.data.username,
+        email,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.detail || "Login failed");
-        }
+  const register = useCallback(async (email: string, username: string, password: string) => {
+    setIsLoading(true);
+    try {
+      const res = await api.post("/auth/register", { email, username, password });
+      setAccessToken(res.data.access_token);
+      setRefreshToken(res.data.refresh_token);
+      setUser({
+        user_id: res.data.user_id,
+        username: res.data.username,
+        email,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
-        const data = await response.json();
-        setAccessToken(data.access_token);
-        setRefreshToken(data.refresh_token);
-        setUser({
-          user_id: data.user_id,
-          username: data.username,
-          email,
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    []
-  );
+  const refreshAccessToken = useCallback(async () => {
+    if (!refreshToken) {
+      logout();
+      return;
+    }
 
-  const register = useCallback(
-    async (email: string, username: string, password: string) => {
-      setIsLoading(true);
-      try {
-        const response = await fetch(`${API_URL}/auth/register`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email, username, password }),
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.detail || "Registration failed");
-        }
-
-        const data = await response.json();
-        setAccessToken(data.access_token);
-        setRefreshToken(data.refresh_token);
-        setUser({
-          user_id: data.user_id,
-          username: data.username,
-          email,
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    []
-  );
+    try {
+      const res = await api.post("/auth/refresh", { refresh_token: refreshToken });
+      setAccessToken(res.data.access_token);
+      setRefreshToken(res.data.refresh_token);
+    } catch (err) {
+      console.error("Error refreshing token", err);
+      logout();
+    }
+  }, [refreshToken]);
 
   const logout = useCallback(() => {
     setUser(null);
@@ -160,35 +128,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const updateProfile = useCallback((updatedUser: Partial<User>) => {
     setUser((prev) => (prev ? { ...prev, ...updatedUser } : null));
   }, []);
-
-  const refreshAccessToken = useCallback(async () => {
-    if (!refreshToken) {
-      logout();
-      return;
-    }
-
-    try {
-      const response = await fetch(`${API_URL}/auth/refresh`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ refresh_token: refreshToken }),
-      });
-
-      if (!response.ok) {
-        logout();
-        return;
-      }
-
-      const data = await response.json();
-      setAccessToken(data.access_token);
-      setRefreshToken(data.refresh_token);
-    } catch (error) {
-      console.error("Error refreshing token:", error);
-      logout();
-    }
-  }, [refreshToken, logout]);
 
   const value: AuthContextType = {
     user,
@@ -203,17 +142,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     isAuthenticated: !!accessToken && !!user,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
   const context = React.useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
+  if (!context) throw new Error("useAuth must be used within AuthProvider");
   return context;
 };
