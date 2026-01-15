@@ -22,7 +22,7 @@ app = FastAPI(title="Ritual")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:8080/",          # local frontend
+        "http://localhost:8080",          # local frontend
         "https://mohasin22.github.io/ritual"  # production frontend
     ],
     allow_credentials=True,
