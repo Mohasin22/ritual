@@ -10,7 +10,15 @@ interface StepsTrackerProps {
 
 const StepsTracker = ({ stepCount, stepGoal, onStepCountChange }: StepsTrackerProps) => {
   const progress = Math.min((stepCount / stepGoal) * 100, 100);
-  const pointsEarned = Math.floor(stepCount / 1000) * 10;
+  
+  // New points logic: 0 points below 6k, 30 points at 6k, +5 for each 1k steps up to 10k (max 50)
+  const pointsEarned = (() => {
+    if (stepCount < 6000) return 0;
+    let points = 30;
+    const additionalSteps = Math.min(stepCount, 10000) - 6000;
+    points += Math.floor(additionalSteps / 1000) * 5;
+    return Math.min(points, 50);
+  })();
 
   return (
     <motion.div
@@ -74,13 +82,13 @@ const StepsTracker = ({ stepCount, stepGoal, onStepCountChange }: StepsTrackerPr
         <Slider
           value={[stepCount]}
           onValueChange={(value) => onStepCountChange(value[0])}
-          max={15000}
+          max={10000}
           step={100}
           className="cursor-pointer"
         />
         <div className="flex justify-between text-xs text-muted-foreground">
           <span>0</span>
-          <span>15,000</span>
+          <span>10,000</span>
         </div>
       </div>
     </motion.div>

@@ -10,11 +10,15 @@ interface Exercise {
 interface WorkoutTrackerProps {
   exercises: Exercise[];
   onToggleExercise: (id: string) => void;
+  dayName?: string;
 }
 
-const WorkoutTracker = ({ exercises, onToggleExercise }: WorkoutTrackerProps) => {
+const WorkoutTracker = ({ exercises, onToggleExercise, dayName }: WorkoutTrackerProps) => {
   const completedCount = exercises.filter((e) => e.completed).length;
   const pointsEarned = completedCount * 20;
+
+  // Get day of week name for display
+  const displayDayName = dayName || new Date().toLocaleDateString("en-US", { weekday: "long" });
 
   return (
     <motion.div
@@ -36,43 +40,47 @@ const WorkoutTracker = ({ exercises, onToggleExercise }: WorkoutTrackerProps) =>
       {/* Day Label */}
       <div className="mb-4">
         <span className="text-sm text-muted-foreground">
-          {new Date().toLocaleDateString("en-US", { weekday: "long" })} — Chest Day
+          {displayDayName} — {exercises.length > 0 ? "Workout Day" : "Rest Day"}
         </span>
       </div>
 
       {/* Exercise List */}
       <div className="space-y-2">
-        {exercises.map((exercise, index) => (
-          <motion.button
-            key={exercise.id}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.1 * index }}
-            onClick={() => onToggleExercise(exercise.id)}
-            className={`w-full flex items-center gap-4 p-4 rounded-xl transition-all duration-200 ${
-              exercise.completed
-                ? "bg-success/5 border border-success/20"
-                : "bg-muted/50 border border-transparent hover:border-border hover:bg-muted"
-            }`}
-          >
-            <div
-              className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${
+        {exercises.length === 0 ? (
+          <p className="text-sm text-muted-foreground italic">No exercises for today</p>
+        ) : (
+          exercises.map((exercise, index) => (
+            <motion.button
+              key={exercise.id}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.1 * index }}
+              onClick={() => onToggleExercise(exercise.id)}
+              className={`w-full flex items-center gap-4 p-4 rounded-xl transition-all duration-200 ${
                 exercise.completed
-                  ? "bg-success text-white"
-                  : "bg-background border-2 border-border"
+                  ? "bg-success/5 border border-success/20"
+                  : "bg-muted/50 border border-transparent hover:border-border hover:bg-muted"
               }`}
             >
-              {exercise.completed && <Check className="w-4 h-4" />}
-            </div>
-            <span
-              className={`font-medium text-left ${
-                exercise.completed ? "text-success line-through" : "text-foreground"
-              }`}
-            >
-              {exercise.name}
-            </span>
-          </motion.button>
-        ))}
+              <div
+                className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${
+                  exercise.completed
+                    ? "bg-success text-white"
+                    : "bg-background border-2 border-border"
+                }`}
+              >
+                {exercise.completed && <Check className="w-4 h-4" />}
+              </div>
+              <span
+                className={`font-medium text-left ${
+                  exercise.completed ? "text-success line-through" : "text-foreground"
+                }`}
+              >
+                {exercise.name}
+              </span>
+            </motion.button>
+          ))
+        )}
       </div>
 
       {/* Progress */}
@@ -80,14 +88,14 @@ const WorkoutTracker = ({ exercises, onToggleExercise }: WorkoutTrackerProps) =>
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Workout Progress</span>
           <span className="font-semibold text-foreground">
-            {completedCount}/{exercises.length} completed
+            {exercises.length > 0 ? `${completedCount}/${exercises.length} completed` : "No exercises"}
           </span>
         </div>
         <div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
           <motion.div
             className="h-full bg-gradient-to-r from-primary to-accent"
             initial={{ width: 0 }}
-            animate={{ width: `${(completedCount / exercises.length) * 100}%` }}
+            animate={{ width: exercises.length > 0 ? `${(completedCount / exercises.length) * 100}%` : "0%" }}
             transition={{ duration: 0.5 }}
           />
         </div>

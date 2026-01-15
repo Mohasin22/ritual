@@ -95,8 +95,8 @@ const Rules = () => {
           <RuleCard
             icon={<Footprints className="w-6 h-6 text-primary" />}
             title="Steps Goal"
-            description="Walk your way to fitness. Every 1,000 steps brings you closer to your goal and earns you points."
-            points="10 pts per 1K steps"
+            description="Reach 6,000 steps to earn 30 points. Each additional 1,000 steps up to 10,000 earns 5 more points. Maximum 50 points."
+            points="30-50 pts"
             isPositive
             delay={0.1}
           />
@@ -181,10 +181,10 @@ const Rules = () => {
             </h3>
             <div className="space-y-2">
               {[
-                { action: "1,000 Steps", points: "+10" },
+                { action: "6,000 Steps", points: "+30" },
+                { action: "7,000-10,000 Steps (each 1K)", points: "+5" },
                 { action: "Complete 1 Exercise", points: "+20" },
                 { action: "Perfect Day Bonus", points: "+50" },
-                { action: "7-Day Streak Bonus", points: "+100" },
                 { action: "30-Day Streak Multiplier", points: "5x" },
               ].map((item) => (
                 <div key={item.action} className="flex justify-between items-center py-2.5 border-b border-border">

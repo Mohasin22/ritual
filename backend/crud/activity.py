@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
-from models import DailyActivity, Streak
+from models.activity import DailyActivity
+from models.streak import Streak
 from schemas import ActivityCreate
 from crud.junk import get_max_allowed_junk
 from utils.points import calculate_points

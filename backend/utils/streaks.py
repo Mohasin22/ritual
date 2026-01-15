@@ -1,5 +1,5 @@
 from datetime import date, timedelta
-from models import Streak
+from models.streak import Streak
 
 def update_streak(
     streak: Streak,
